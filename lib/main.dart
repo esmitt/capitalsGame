@@ -4,6 +4,8 @@ import 'game.dart';
 
 void main() => runApp(MyApp());
 
+// flutter packages pub run flutter_launcher_icons:main
+// flutter build apk --split-per-abi
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -27,7 +29,7 @@ class _HomePageState extends State<HomePage> {
       context: context,
       gotoWidget: Game(),
       splashscreenWidget: SplashScreen(),
-      timerInSeconds: 3,
+      timerInSeconds: 2,
     );
   }
 }
@@ -42,13 +44,30 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-          child: Text(
-            'Capitales de Liam',
-            style: TextStyle(
-              fontSize: 35.0,
-        ),
-      )),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Center(
+            child: Image.asset(
+              'assets/images/icon-main.png',
+              width: 500,
+              alignment: Alignment.center,
+            ),
+          ),
+          Center( 
+            child: Text(
+              "CAPITALES",
+              style: TextStyle(
+                color: Colors.redAccent.shade200,
+                fontSize: 45,
+                fontFamily: 'Raleway',
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          )
+        ],
+      ),
     );
   }
 }

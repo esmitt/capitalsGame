@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter_rounded_progress_bar/flutter_icon_rounded_progress_bar.dart';
 import 'package:flutter_rounded_progress_bar/flutter_rounded_progress_bar.dart';
 import 'package:flutter_rounded_progress_bar/rounded_progress_bar_style.dart';
+import 'package:audioplayers/audio_cache.dart';
 import 'results.dart';
 
 class Game extends StatefulWidget {
@@ -16,24 +16,26 @@ class Game extends StatefulWidget {
 class _GameState extends State<Game> {
   Stopwatch _watch = new Stopwatch();
   Timer _timer;
-  String _elapsedTime = "asdsa";
-  
+  String _elapsedTime = '';
+
+  int isSelected =
+      -1; // changed bool to int and set value to -1 on first time if you don't select anything otherwise set 0 to set first one as selected.
+
   double _percentage = 0;
 
   final int _numberItems = 15;
   int _currentIndex = 0;
   int _currentItem = 0; // number of items good/bad
-  double _stepProgress = 0;
   int _numberCorrect = 0;
 
   final Color itemRegular = Color(0xff707070);
   final Color itemSelected = Color(0xff303030);
   final Color itemCorrect = Color(0xff88E1F2);
   final Color itemWrong = Color(0xffFF7C7C);
+  Color itemColorSelected;
   Color colorItem;
-  int whichItemSelected = 0;
 
-  List<String> countries = [
+  List countries = [
     "Afganistán",
     "Albania",
     "Alemania",
@@ -229,7 +231,7 @@ class _GameState extends State<Game> {
     "Zambia",
     "Zimbabue"
   ];
-  List<String> capitals = [
+  List capitals = [
     "Kabul",
     "Tirana",
     "Berlín",
@@ -366,7 +368,7 @@ class _GameState extends State<Game> {
     "Amsterdam",
     "Islamabad",
     "Melekeok",
-    "Panamá",
+    "Ciudad de Panamá",
     "Port Moresby",
     "Asunción",
     "Lima",
@@ -425,7 +427,7 @@ class _GameState extends State<Game> {
     "Lusaka",
     "Harare"
   ];
-  List<String> flags = [
+  List flags = [
     "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Flag_of_Afghanistan.svg/600px-Flag_of_Afghanistan.svg.png",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Flag_of_Albania.svg/600px-Flag_of_Albania.svg.png",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Flag_of_Germany.svg/600px-Flag_of_Germany.svg.png",
@@ -543,7 +545,7 @@ class _GameState extends State<Game> {
     "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Flag_of_Morocco.svg/600px-Flag_of_Morocco.svg.png",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Flag_of_Mauritius.svg/600px-Flag_of_Mauritius.svg.png",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Mexico.svg/600px-Flag_of_Mexico.svg.png",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Mexico.svg/600px-Flag_of_Mexico.svg.png",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Flag_of_Mauritania.svg/600px-Flag_of_Mauritania.svg.png",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Flag_of_the_Federated_States_of_Micronesia.svg/600px-Flag_of_the_Federated_States_of_Micronesia.svg.png",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Flag_of_Moldova.svg/600px-Flag_of_Moldova.svg.png",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Flag_of_Monaco.svg/600px-Flag_of_Monaco.svg.png",
@@ -622,46 +624,38 @@ class _GameState extends State<Game> {
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Flag_of_Zimbabwe.svg/600px-Flag_of_Zimbabwe.svg.png"
   ];
 
-  List<String> entries = ['', '', '', ''];
+  List entries;
 
   var _randomObj;
+  AudioCache player = null;
 
+  void _isSelected(int index) {
+    //pass the selected index to here and set to 'isSelected'
+    setState(() {
+      isSelected = index;
+    });
+  }
+
+  // Create the random data of country and 4 options for capitals (including the correct one)
   void _makeData() {
     _randomObj = Random();
-
-    int position = _randomObj.nextInt(4);
 
     _currentIndex =
         _randomObj.nextInt(countries.length); // position of item to show
 
-    entries[position] = capitals[_currentIndex];
-    switch (position) {
-      case 0:
-        entries[1] = capitals[_randomObj.nextInt(countries.length)];
-        entries[2] = capitals[_randomObj.nextInt(countries.length)];
-        entries[3] = capitals[_randomObj.nextInt(countries.length)];
-        break;
-      case 1:
-        entries[0] = capitals[_randomObj.nextInt(countries.length)];
-        entries[2] = capitals[_randomObj.nextInt(countries.length)];
-        entries[3] = capitals[_randomObj.nextInt(countries.length)];
-        break;
-      case 2:
-        entries[0] = capitals[_randomObj.nextInt(countries.length)];
-        entries[1] = capitals[_randomObj.nextInt(countries.length)];
-        entries[3] = capitals[_randomObj.nextInt(countries.length)];
-        break;
-      case 3:
-        entries[0] = capitals[_randomObj.nextInt(countries.length)];
-        entries[1] = capitals[_randomObj.nextInt(countries.length)];
-        entries[2] = capitals[_randomObj.nextInt(countries.length)];
-        break;
+    // add random elements into a set to avoid collisions and store them into entries
+    Set candidates = Set();
+    candidates.add(capitals[_currentIndex]);
+    while (candidates.length < 4) {
+      candidates.add(capitals[_randomObj.nextInt(countries.length)]);
     }
-    whichItemSelected = 0;
+
+    entries = List.from(candidates);
+    entries.shuffle();
   }
 
   _GameState() {
-    _stepProgress = 1.0 / _numberItems;
+    player = AudioCache();
     _makeData();
     startWatch();
   }
@@ -674,11 +668,6 @@ class _GameState extends State<Game> {
             correct: _numberCorrect, total: _numberItems, time: _elapsedTime),
       ));
       _currentItem++;
-      // String lastTime = "$_numberAccept/$_numberItems en $_elapsedTime";
-      // setState(() {
-      //   _elapsedTime = lastTime;
-      // });
-      // _currentItem++;
     }
     if (_watch.isRunning) {
       setState(() {
@@ -722,34 +711,37 @@ class _GameState extends State<Game> {
               fit: BoxFit.cover,
             ),
           ),
-          Stack(children: <Widget>[
-            RoundedProgressBar(
-              percent: _percentage,
-              style: RoundedProgressBarStyle(
-                borderWidth: 0,
-                backgroundProgress: Color(0xffffffff),
-                colorProgress: Color(0xffFFD082),
-                colorProgressDark: Color(0xffEEB062),
-              ),
-              ),
-              Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.max,
+          Stack(
             children: <Widget>[
-              Container(
-                padding: EdgeInsets.fromLTRB(0, 10, 0, 10),
-                child: Text(
-                  countries[_currentIndex].toUpperCase(),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: Color(0xff707070),
-                      fontSize: 23,
-                      fontWeight: FontWeight.bold),
+              RoundedProgressBar(
+                percent: _percentage,
+                style: RoundedProgressBarStyle(
+                  borderWidth: 0,
+                  backgroundProgress: Color(0xffffffff),
+                  colorProgress: Color(0xffFFD082),
+                  colorProgressDark: Color(0xffEEB062),
                 ),
               ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.max,
+                children: <Widget>[
+                  Flexible(
+                    child: Container(
+                      padding: EdgeInsets.fromLTRB(0, 10, 0, 10),
+                      child: Text(
+                        countries[_currentIndex].toUpperCase(),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            color: Color(0xff707070),
+                            fontSize: 23,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
-          ),
-          ],
           ),
           Expanded(
               child: ListView.builder(
@@ -758,15 +750,25 @@ class _GameState extends State<Game> {
                     return GestureDetector(
                       onTapDown: (TapDownDetails details) {
                         //whichItemSelected = 1;
+                        _isSelected(index); //pass index value to '_isSelected'
                       },
                       onTap: () {
+                        itemColorSelected = itemWrong;
                         if (entries[index].compareTo(capitals[_currentIndex]) ==
                             0) {
                           _numberCorrect++;
+                          itemColorSelected = itemCorrect;
+                          const alarmAudioPath = "sounds/correct.mp3";
+                          player.play(alarmAudioPath);
+                        } else {
+                          const alarmAudioPath = "sounds/wrong.mp3";
+                          player.play(alarmAudioPath);
                         }
                         _currentItem++;
-                        _percentage = (_currentItem * 100) / _numberItems.toDouble();
+                        _percentage =
+                            (_currentItem * 100) / _numberItems.toDouble();
                         _makeData();
+                        isSelected = -1;
                       },
                       child: Container(
                         margin: EdgeInsets.fromLTRB(35, 10, 35, 0),
@@ -788,14 +790,13 @@ class _GameState extends State<Game> {
   }
 
   String transformMilliSeconds(int milliseconds) {
-    //Thanks to Andrew
     int hundreds = (milliseconds / 10).truncate();
     int seconds = (hundreds / 100).truncate();
     int minutes = (seconds / 60).truncate();
 
     String minutesStr = (minutes % 60).toString().padLeft(2, '0');
     String secondsStr = (seconds % 60).toString().padLeft(2, '0');
-    String millisecStr = (hundreds % 1000).toString();
+    String millisecStr = (hundreds % 1000).toString(); // This is wrong! sorry
     if (millisecStr.length >= 2) millisecStr = millisecStr.substring(1, 2);
 
     return "$minutesStr:$secondsStr:$millisecStr";
